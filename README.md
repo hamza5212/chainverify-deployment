@@ -76,32 +76,44 @@ Open http://localhost:3000
 
 | Method | Route | Purpose |
 |--------|-------|---------|
-| GET  | `/health` | Status check |
-| GET  | `/stats` | Counts |
-| GET  | `/analytics` | Home dashboard data |
-| GET  | `/news` | List / search articles |
-| GET  | `/news/<id>` | Full article |
-| POST | `/register` | Register one article |
-| POST | `/register-all` | Register all unregistered |
-| POST | `/verify` | Verify by `article_id` OR `content` |
-| GET  | `/chain` | Full chain |
-| GET  | `/chain/validate` | Validate links |
-| GET  | `/trusted-sources` | Publisher whitelist |
+| GET | `/health` | Check backend status |
+| GET | `/stats` | Retrieve project statistics |
+| GET | `/analytics` | Retrieve dashboard data |
+| GET | `/news` | List and search articles |
+| GET | `/news/<id>` | Retrieve a full article |
+| POST | `/auth/register` | Register a user |
+| POST | `/auth/login` | Log in |
+| POST | `/auth/logout` | Log out |
+| POST | `/register/prepare` | Prepare an article registration |
+| POST | `/register/confirm` | Confirm an article registration |
+| POST | `/verify` | Verify submitted content |
+| GET | `/chain` | Retrieve ledger records |
+| GET | `/chain/validate` | Validate the ledger |
+| GET | `/trusted-sources` | Retrieve trusted publishers |
 | POST | `/articles/add` | Add an article from a trusted publisher |
 
 ---
 
 ## Limitations
 
-- Simulated, centralised ledger
-- Local SQLite only
-- No publisher identity
+- Simulated, centralized ledger stored in SQLite
+- No distributed blockchain consensus for the SQLite ledger
 - No factual fact-checking
-- Zero-width watermark can be stripped
+- Zero-width watermarks can be removed
+- Verification depends on registered content and normalization rules
 - Not benchmarked at scale
 
 ---
 
-## Licence
+## Contributors
 
-MIT.
+- Taher Saterdawala
+- Hamza Selanawala
+- Gautham Seshapalli
+- Ayush Shetty
+
+---
+
+## License
+
+This project is licensed under the MIT License.
