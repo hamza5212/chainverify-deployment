@@ -1,0 +1,24 @@
+# Python
+__pycache__/
+*.py[cod]
+venv/
+.venv/
+env/
+
+# Node
+node_modules/
+frontend/node_modules/
+npm-debug.log*
+
+# Generated database
+database/*.db
+database/*.db-journal
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Local env
+.env

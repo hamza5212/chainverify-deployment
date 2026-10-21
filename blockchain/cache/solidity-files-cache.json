@@ -1,0 +1,41 @@
+{
+  "_format": "hh-sol-cache-2",
+  "files": {
+    "C:\\Users\\TAHER\\Downloads\\chainverify-main\\chainverify-main\\blockchain\\contracts\\ChainVerify.sol": {
+      "lastModificationDate": 1792598352393,
+      "contentHash": "57b5d12f7da233e9856c5fdc9e97d682",
+      "sourceName": "contracts/ChainVerify.sol",
+      "solcConfig": {
+        "version": "0.8.20",
+        "settings": {
+          "evmVersion": "paris",
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        "^0.8.20"
+      ],
+      "artifacts": [
+        "ChainVerify"
+      ]
+    }
+  }
+}
