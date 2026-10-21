@@ -1,10 +1,16 @@
 """SQLite persistence layer for ChainVerify."""
 import shutil
 import sqlite3
+import os
 from datetime import datetime
 from pathlib import Path
 
-DB_PATH = Path(__file__).resolve().parent.parent / "database" / "chainverify.db"
+DB_PATH = Path(
+    os.environ.get(
+        "DATABASE_PATH",
+        str(Path(__file__).resolve().parent.parent / "database" / "chainverify.db")
+    )
+)
 
 
 def get_connection() -> sqlite3.Connection:
