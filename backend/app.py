@@ -362,7 +362,41 @@ def _user_json(row):
 @app.route("/health")
 def health():
     return jsonify({"status": "ok"})
+@app.route("/diagnostics/rpc")
+def diagnostics_rpc():
+    try:
+        body = json.dumps({
+            "jsonrpc": "2.0",
+            "id": 1,
+            "method": "eth_chainId",
+            "params": []
+        }).encode()
 
+        req = urllib.request.Request(
+            RPC_URL,
+            data=body,
+            headers={"Content-Type": "application/json"}
+        )
+
+        with urllib.request.urlopen(req, timeout=8) as response:
+            result = json.loads(response.read()).get("result")
+
+        if result == "0xaa36a7":
+            return jsonify({
+                "status": "ok",
+                "network": "Sepolia"
+            })
+
+        return jsonify({
+            "status": "unexpected_network",
+            "chain_id": result
+        }), 502
+
+    except Exception:
+        return jsonify({
+            "status": "rpc_failed",
+            "message": "RPC request failed"
+        }), 502
 @app.route("/auth/register", methods=["POST"])
 def auth_register():
     data = request.get_json(silent=True) or {}
