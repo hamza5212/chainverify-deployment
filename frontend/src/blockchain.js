@@ -1,4 +1,4 @@
-```javascript
+
 import { ethers } from 'ethers'
 import contractAddress from './contract-address.json'
 import ChainVerifyABI from './ChainVerifyABI.json'
@@ -18,9 +18,7 @@ async function ensureCorrectNetwork() {
     )
   }
 
-  const current = await window.ethereum.request({
-    method: 'eth_chainId',
-  })
+  const current = await window.ethereum.request({ method: 'eth_chainId' })
 
   if (current === SEPOLIA_CHAIN_ID) return
 
@@ -56,14 +54,10 @@ async function ensureCorrectNetwork() {
     }
   }
 
-  const updated = await window.ethereum.request({
-    method: 'eth_chainId',
-  })
+  const updated = await window.ethereum.request({ method: 'eth_chainId' })
 
   if (updated !== SEPOLIA_CHAIN_ID) {
-    throw new Error(
-      'Please switch MetaMask to Ethereum Sepolia and try again.'
-    )
+    throw new Error('Please switch MetaMask to Ethereum Sepolia and try again.')
   }
 }
 
@@ -217,4 +211,3 @@ export async function getOnChainEvents() {
     blockNumber: ev.blockNumber,
   }))
 }
-```
