@@ -1,70 +1,167 @@
+```javascript
 import { ethers } from 'ethers'
 import contractAddress from './contract-address.json'
 import ChainVerifyABI from './ChainVerifyABI.json'
 
-const HARDHAT_CHAIN_ID = '0x7a69'
-const RPC_URL = 'http://127.0.0.1:8545'
+const SEPOLIA_CHAIN_ID = '0xaa36a7'
+const SEPOLIA_RPC_URL = import.meta.env.VITE_SEPOLIA_RPC_URL
+const SEPOLIA_EXPLORER_URL = 'https://sepolia.etherscan.io'
 
-export function hasMetaMask() { return typeof window !== 'undefined' && Boolean(window.ethereum) }
+export function hasMetaMask() {
+  return typeof window !== 'undefined' && Boolean(window.ethereum)
+}
 
 async function ensureCorrectNetwork() {
-  if (!window.ethereum) throw new Error('MetaMask is not installed.')
-  const current = await window.ethereum.request({ method: 'eth_chainId' })
-  if (current === HARDHAT_CHAIN_ID) return
+  if (!window.ethereum) {
+    throw new Error(
+      'MetaMask is not installed. Open this website in a browser with the MetaMask extension enabled.'
+    )
+  }
+
+  const current = await window.ethereum.request({
+    method: 'eth_chainId',
+  })
+
+  if (current === SEPOLIA_CHAIN_ID) return
+
   try {
-    await window.ethereum.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: HARDHAT_CHAIN_ID }] })
+    await window.ethereum.request({
+      method: 'wallet_switchEthereumChain',
+      params: [{ chainId: SEPOLIA_CHAIN_ID }],
+    })
   } catch (err) {
     if (err.code === 4902 || /Unrecognized chain/i.test(err.message || '')) {
-      await window.ethereum.request({ method: 'wallet_addEthereumChain', params: [{ chainId: HARDHAT_CHAIN_ID, chainName: 'Hardhat Local', nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 }, rpcUrls: [RPC_URL] }] })
-    } else { throw err }
+      if (!SEPOLIA_RPC_URL) {
+        throw new Error(
+          'Sepolia RPC URL is not configured. Set VITE_SEPOLIA_RPC_URL in Vercel Environment Variables.'
+        )
+      }
+
+      await window.ethereum.request({
+        method: 'wallet_addEthereumChain',
+        params: [{
+          chainId: SEPOLIA_CHAIN_ID,
+          chainName: 'Ethereum Sepolia',
+          nativeCurrency: {
+            name: 'Sepolia Ether',
+            symbol: 'ETH',
+            decimals: 18,
+          },
+          rpcUrls: [SEPOLIA_RPC_URL],
+          blockExplorerUrls: [SEPOLIA_EXPLORER_URL],
+        }],
+      })
+    } else {
+      throw err
+    }
+  }
+
+  const updated = await window.ethereum.request({
+    method: 'eth_chainId',
+  })
+
+  if (updated !== SEPOLIA_CHAIN_ID) {
+    throw new Error(
+      'Please switch MetaMask to Ethereum Sepolia and try again.'
+    )
   }
 }
 
 export async function connectWallet() {
-  if (!hasMetaMask()) throw new Error('MetaMask is not installed.')
+  if (!hasMetaMask()) {
+    throw new Error(
+      'MetaMask is not detected. Open the website in a browser with the MetaMask extension enabled.'
+    )
+  }
+
   await ensureCorrectNetwork()
+
   const provider = new ethers.BrowserProvider(window.ethereum)
   await provider.send('eth_requestAccounts', [])
   const signer = await provider.getSigner()
-  return { provider, signer, address: await signer.getAddress() }
+
+  return {
+    provider,
+    signer,
+    address: await signer.getAddress(),
+  }
 }
 
 export async function getContract() {
-  if (!contractAddress.ChainVerify) throw new Error('Contract address not found.')
+  if (!contractAddress.ChainVerify) {
+    throw new Error('Contract address not found.')
+  }
+
   const { signer } = await connectWallet()
-  return new ethers.Contract(contractAddress.ChainVerify, ChainVerifyABI, signer)
+  const contract = new ethers.Contract(
+    contractAddress.ChainVerify,
+    ChainVerifyABI,
+    signer
+  )
+
+  const network = await signer.provider.getNetwork()
+
+  if (network.chainId !== 11155111n) {
+    throw new Error('The wallet must be connected to Ethereum Sepolia.')
+  }
+
+  return contract
 }
 
 function extractErrorMessage(err) {
-  if (err?.code === 4001 || err?.code === 'ACTION_REJECTED') return 'You rejected the transaction in MetaMask.'
+  if (err?.code === 4001 || err?.code === 'ACTION_REJECTED') {
+    return 'You rejected the transaction in MetaMask.'
+  }
+
   if (err?.reason) return err.reason
-  if (err?.info?.error?.message && err.info.error.message !== 'Internal JSON-RPC error.') return err.info.error.message
-  if (typeof err?.message === 'string' && err.message !== 'Internal JSON-RPC error.') return err.message
+
+  if (
+    err?.info?.error?.message &&
+    err.info.error.message !== 'Internal JSON-RPC error.'
+  ) {
+    return err.info.error.message
+  }
+
+  if (
+    typeof err?.message === 'string' &&
+    err.message !== 'Internal JSON-RPC error.'
+  ) {
+    return err.message
+  }
+
   return 'The transaction was rejected by the contract.'
 }
 
 export async function registerOnChain(articleId, contentHash, watermarkId) {
   const contract = await getContract()
-  
+
   try {
     const existing = await contract.getArticle(articleId)
+
     if (existing && existing.contentHash) {
       return { txHash: 'synced-from-chain', blockNumber: 0 }
     }
   } catch (e) {
-    // Ignore read errors
+    // Ignore read errors and let registration report any real failure.
   }
 
   try {
-    // Explicitly set gasLimit and gasPrice to lock the fee to a constant amount
-    const tx = await contract.registerArticle(articleId, contentHash, watermarkId, { 
-      gasLimit: 300000,
-      gasPrice: ethers.parseUnits("1", "gwei") 
-    })
+    const tx = await contract.registerArticle(
+      articleId,
+      contentHash,
+      watermarkId
+    )
+
     const receipt = await tx.wait()
-    
-    if (!receipt || receipt.status !== 1) throw new Error('Transaction reverted on the blockchain.')
-    return { txHash: tx.hash, blockNumber: receipt.blockNumber }
+
+    if (!receipt || receipt.status !== 1) {
+      throw new Error('Transaction reverted on the blockchain.')
+    }
+
+    return {
+      txHash: tx.hash,
+      blockNumber: receipt.blockNumber,
+    }
   } catch (err) {
     throw new Error(extractErrorMessage(err))
   }
@@ -72,15 +169,19 @@ export async function registerOnChain(articleId, contentHash, watermarkId) {
 
 export async function recordVerificationOnChain(articleId) {
   const contract = await getContract()
+
   try {
-    // Explicitly set gasLimit and gasPrice to lock the fee to a constant amount
-    const tx = await contract.recordVerification(articleId, { 
-      gasLimit: 100000,
-      gasPrice: ethers.parseUnits("1", "gwei")
-    })
+    const tx = await contract.recordVerification(articleId)
     const receipt = await tx.wait()
-    if (!receipt || receipt.status !== 1) throw new Error('Transaction reverted on the blockchain.')
-    return { txHash: tx.hash, blockNumber: receipt.blockNumber }
+
+    if (!receipt || receipt.status !== 1) {
+      throw new Error('Transaction reverted on the blockchain.')
+    }
+
+    return {
+      txHash: tx.hash,
+      blockNumber: receipt.blockNumber,
+    }
   } catch (err) {
     throw new Error(extractErrorMessage(err))
   }
@@ -88,11 +189,32 @@ export async function recordVerificationOnChain(articleId) {
 
 export async function getOnChainEvents() {
   if (!contractAddress.ChainVerify) return []
-  const provider = new ethers.JsonRpcProvider(RPC_URL)
-  const contract = new ethers.Contract(contractAddress.ChainVerify, ChainVerifyABI, provider)
-  const events = await contract.queryFilter(contract.filters.ArticleRegistered(), 0, 'latest')
+
+  if (!SEPOLIA_RPC_URL) {
+    throw new Error('Sepolia RPC URL is not configured.')
+  }
+
+  const provider = new ethers.JsonRpcProvider(SEPOLIA_RPC_URL)
+  const contract = new ethers.Contract(
+    contractAddress.ChainVerify,
+    ChainVerifyABI,
+    provider
+  )
+
+  const events = await contract.queryFilter(
+    contract.filters.ArticleRegistered(),
+    0,
+    'latest'
+  )
+
   return events.map((ev) => ({
-    articleId: ev.args.articleId, contentHash: ev.args.contentHash, watermarkId: ev.args.watermarkId,
-    registeredBy: ev.args.registeredBy, timestamp: Number(ev.args.timestamp), txHash: ev.transactionHash, blockNumber: ev.blockNumber,
+    articleId: ev.args.articleId,
+    contentHash: ev.args.contentHash,
+    watermarkId: ev.args.watermarkId,
+    registeredBy: ev.args.registeredBy,
+    timestamp: Number(ev.args.timestamp),
+    txHash: ev.transactionHash,
+    blockNumber: ev.blockNumber,
   }))
 }
+```
